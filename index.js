@@ -1,6 +1,5 @@
 const express = require('express');
 const { Telegraf } = require('telegraf');
-const axios = require('axios');
 
 const app = express();
 app.use(express.json());
@@ -10,26 +9,25 @@ const VERCEL_URL = "https://telegram-link-generator-gules.vercel.app";
 
 const bot = new Telegraf(BOT_TOKEN);
 
-// 1. ፋይሉን ከቴሌግራም አግኝቶ ወደ ትክክለኛው አድራሻ ማዞሪያ (Redirector)
+// 1. ፋይሉን ከቴሌግራም አግኝቶ በቀጥታ ማዞሪያ (Redirector)
 app.get('/dl/:fileId', async (req, res) => {
     try {
         const fileId = req.params.fileId;
         if (!fileId) return res.status(400).send("Error: Invalid Link");
-        if (!BOT_TOKEN) return res.status(500).send("Error: BOT_TOKEN is not configured");
 
-        // የፋይሉን ትክክለኛ 路径 (File Path) ከቴሌግራም መጠየቅ
-        const response = await axios.get(`https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${fileId}`);
-        if (!response.data.ok) {
+        const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${fileId}`);
+        const data = await response.json();
+
+        if (!data.ok) {
             return res.status(404).send("Error: File not found on Telegram");
         }
 
-        const filePath = response.data.result.file_path;
+        const filePath = data.result.file_path;
         const tgFileUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${filePath}`;
         
         return res.redirect(302, tgFileUrl);
     } catch (error) {
-        console.error("Redirect error:", error);
-        return res.status(500).send("Error processing file download");
+        return res.status(500).send("Internal Server Error");
     }
 });
 
@@ -37,24 +35,24 @@ app.get('/stream/:fileId', async (req, res) => {
     try {
         const fileId = req.params.fileId;
         if (!fileId) return res.status(400).send("Error: Invalid Link");
-        if (!BOT_TOKEN) return res.status(500).send("Error: BOT_TOKEN is not configured");
 
-        const response = await axios.get(`https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${fileId}`);
-        if (!response.data.ok) {
+        const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${fileId}`);
+        const data = await response.json();
+
+        if (!data.ok) {
             return res.status(404).send("Error: File not found on Telegram");
         }
 
-        const filePath = response.data.result.file_path;
+        const filePath = data.result.file_path;
         const tgFileUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${filePath}`;
         
         return res.redirect(302, tgFileUrl);
     } catch (error) {
-        console.error("Stream error:", error);
-        return res.status(500).send("Error processing file stream");
+        return res.status(500).send("Internal Server Error");
     }
 });
 
-// 2. ተጠቃሚው ፋይል ሲልክ የሚሰራ ቦት ሎጂክ (Bot Handler)
+// 2. የቴሌግራም ቦት መልዕክት ተቀባይ (Bot Handler)
 bot.on(['video', 'document', 'audio', 'photo'], async (ctx) => {
     try {
         let fileId = null;
