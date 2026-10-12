@@ -9,25 +9,50 @@ const VERCEL_URL = "https://telegram-link-generator-gules.vercel.app";
 
 const bot = new Telegraf(BOT_TOKEN);
 
-// በቀጥታ ወደ ቴሌግራም ፋይል አድራሻ ማዞሪያ (Direct Redirect)
-app.get('/dl/:fileId', (req, res) => {
-    const fileId = req.params.fileId;
-    if (!fileId) return res.status(400).send("Error: Invalid Link");
+// 1. ፋይሉን ከቴሌግራም አግኝቶ በቀጥታ ወደ 1DM ሊንክ ማዞሪያ
+app.get('/dl/:fileId', async (req, res) => {
+    try {
+        const fileId = req.params.fileId;
+        if (!fileId) return res.status(400).send("Error: Invalid Link");
 
-    // በቴሌግራም API በቀጥታ ፋይሉን ማውረድ የሚቻልበት ሊንክ
-    const tgFileUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${fileId}`;
-    return res.redirect(302, tgFileUrl);
+        const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${fileId}`);
+        const data = await response.json();
+
+        if (!data.ok) {
+            return res.status(404).send("Error: File not found. Please forward the file directly to the bot instead of using old links.");
+        }
+
+        const filePath = data.result.file_path;
+        const tgFileUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${filePath}`;
+        
+        return res.redirect(302, tgFileUrl);
+    } catch (error) {
+        return res.status(500).send("Internal Server Error");
+    }
 });
 
-app.get('/stream/:fileId', (req, res) => {
-    const fileId = req.params.fileId;
-    if (!fileId) return res.status(400).send("Error: Invalid Link");
+app.get('/stream/:fileId', async (req, res) => {
+    try {
+        const fileId = req.params.fileId;
+        if (!fileId) return res.status(400).send("Error: Invalid Link");
 
-    const tgFileUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${fileId}`;
-    return res.redirect(302, tgFileUrl);
+        const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${fileId}`);
+        const data = await response.json();
+
+        if (!data.ok) {
+            return res.status(404).send("Error: File not found.");
+        }
+
+        const filePath = data.result.file_path;
+        const tgFileUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${filePath}`;
+        
+        return res.redirect(302, tgFileUrl);
+    } catch (error) {
+        return res.status(500).send("Internal Server Error");
+    }
 });
 
-// የቴሌግራም ቦት መልዕክት ተቀባይ (Bot Handler)
+// 2. ተጠቃሚው ፋይል ሲልክ (በተለይ ወደ ቦቱ ራሱ fileupload ሲያደርግ)
 bot.on(['video', 'document', 'audio', 'photo'], async (ctx) => {
     try {
         let fileId = null;
