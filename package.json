@@ -1,0 +1,9 @@
+{
+  "name": "telegram-link-generator",
+  "version": "1.0.0",
+  "description": "Telegram public link generator on Vercel",
+  "main": "index.js",
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
